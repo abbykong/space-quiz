@@ -131,6 +131,14 @@
     .result-details span { font-size: 10px; color: var(--muted); }
     .result-details > div + div { border-left: 1px solid var(--line); }
     .result .next { justify-content: center; gap: 10px; }
+    .copy-result { background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+    .copy-status { font-size: 12px; margin: 12px 0 0; }
+    .copy-status:empty { margin: 0; }
+    .manual-copy { text-align: left; margin-top: 14px; font-size: 12px; }
+    .manual-copy label { display: block; font-weight: 650; margin-bottom: 6px; }
+    .manual-copy textarea { display: block; width: 100%; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft); color: var(--ink); font: inherit; }
+    .manual-copy textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+    .manual-copy p { margin: 8px 0 0; }
     .arrive { animation: appear .3s ease both; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
     @keyframes pop { 0% { transform: scale(.96); } 60% { transform: scale(1.025); } 100% { transform: scale(1); } }
@@ -196,6 +204,13 @@
         <div class="final-score"><span id="final-score"></span><small> / 10</small></div>
         <p class="result-caption">YOUR FINAL SCORE</p>
         <div class="result-details"><div><strong id="accuracy"></strong><span>ACCURACY</span></div><div><strong id="rank"></strong><span>EXPLORER RANK</span></div></div>
+        <button class="next copy-result" id="copy-result" type="button">Copy result</button>
+        <p class="copy-status" id="copy-status" role="status" aria-atomic="true"></p>
+        <div class="manual-copy" id="manual-copy" hidden>
+          <label for="copy-summary">Result summary</label>
+          <textarea id="copy-summary" rows="3" readonly aria-describedby="copy-guidance"></textarea>
+          <p id="copy-guidance">Select the summary and copy it with Ctrl+C (Windows/Linux), Command+C (Mac), or your device's Copy command.</p>
+        </div>
         <button class="next" id="restart"><span aria-hidden="true">↻</span> Explore again</button>
       </section>
     </section>
@@ -219,6 +234,7 @@
     let current = 0;
     let score = 0;
     let answered = false;
+    let copyAttempt = 0;
 
     function updateProgress(completed) {
       $("fill").style.width = `${completed / questions.length * 100}%`;
@@ -306,12 +322,42 @@
       $("result-title").focus({ preventScroll: true });
     }
 
+    function resetCopy() {
+      copyAttempt++;
+      $("copy-status").textContent = "";
+      $("manual-copy").hidden = true;
+      $("copy-summary").value = "";
+      $("copy-result").disabled = false;
+    }
+
+    $("copy-result").addEventListener("click", async () => {
+      resetCopy();
+      const attempt = copyAttempt;
+      const summary = `Orbit quiz: ${score}/${questions.length} — ${$("accuracy").textContent} accuracy — ${$("rank").textContent} ${$("reaction").textContent}`;
+      $("copy-result").disabled = true;
+      try {
+        await navigator.clipboard.writeText(summary);
+        if (attempt !== copyAttempt) return;
+        $("copy-status").textContent = "Result copied.";
+      } catch {
+        if (attempt !== copyAttempt) return;
+        $("copy-status").textContent = "Clipboard unavailable. Copy the summary below.";
+        $("copy-summary").value = summary;
+        $("manual-copy").hidden = false;
+        $("copy-summary").focus({ preventScroll: true });
+        $("copy-summary").select();
+      } finally {
+        if (attempt === copyAttempt) $("copy-result").disabled = false;
+      }
+    });
+
     $("next").addEventListener("click", () => {
       if (!answered) return;
       if (current === questions.length - 1) showResults();
       else { current++; showQuestion(true); }
     });
     $("restart").addEventListener("click", () => {
+      resetCopy();
       current = 0;
       score = 0;
       $("results").hidden = true;
