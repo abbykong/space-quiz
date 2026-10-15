@@ -79,6 +79,10 @@
     .score span:first-child { margin-right: 5px; color: var(--accent); }
     .track { height: 5px; background: var(--line); overflow: hidden; border-radius: 5px; }
     .fill { height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .45s ease; }
+    .shuffle-control { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 14px; color: var(--ink); font-size: 13px; }
+    .shuffle-control input { margin: 4px 0 0; accent-color: var(--accent); }
+    .shuffle-copy { display: grid; gap: 1px; }
+    .shuffle-hint { color: var(--muted); font-size: 11px; }
     .card { padding: 26px; border-radius: 19px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
     .topic { font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
     h2 { font-size: 21px; line-height: 1.4; font-weight: 650; letter-spacing: -.5px; margin: 10px 0 22px; }
@@ -180,6 +184,13 @@
         </div>
         <div class="track" role="progressbar" aria-label="Quiz completion" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" id="progress"><div class="fill" id="fill"></div></div>
       </div>
+      <label class="shuffle-control" for="shuffle">
+        <input id="shuffle" type="checkbox" aria-describedby="shuffle-hint">
+        <span class="shuffle-copy">
+          <span>Shuffle questions</span>
+          <span class="shuffle-hint" id="shuffle-hint">Choose before your first answer; Explore again keeps this setting.</span>
+        </span>
+      </label>
       <div class="card" id="quiz">
         <div class="topic" id="topic"></div>
         <h2 id="question" tabindex="-1"></h2>
@@ -219,6 +230,18 @@
     let current = 0;
     let score = 0;
     let answered = false;
+    let attemptQuestions = [...questions];
+
+    function createQuestionOrder(shuffle) {
+      const order = [...questions];
+      if (shuffle) {
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+      }
+      return order;
+    }
 
     function updateProgress(completed) {
       $("fill").style.width = `${completed / questions.length * 100}%`;
@@ -229,7 +252,7 @@
 
     function showQuestion(focus = false) {
       answered = false;
-      const item = questions[current];
+      const item = attemptQuestions[current];
       $("counter").innerHTML = `<strong>Question ${String(current + 1).padStart(2, "0")}</strong> / ${questions.length}`;
       $("topic").textContent = item.topic;
       $("question").textContent = item.question;
@@ -259,7 +282,9 @@
     function selectAnswer(selected) {
       if (answered) return;
       answered = true;
-      const item = questions[current];
+      $("shuffle").disabled = true;
+      $("shuffle-hint").textContent = "Question order is locked for this attempt.";
+      const item = attemptQuestions[current];
       const correct = selected === item.correct;
       if (correct) score++;
       const buttons = Array.from($("answers").children);
@@ -311,14 +336,22 @@
       if (current === questions.length - 1) showResults();
       else { current++; showQuestion(true); }
     });
+    $("shuffle").addEventListener("change", () => {
+      attemptQuestions = createQuestionOrder($("shuffle").checked);
+      showQuestion();
+    });
     $("restart").addEventListener("click", () => {
       current = 0;
       score = 0;
+      $("shuffle").disabled = false;
+      $("shuffle-hint").textContent = "Choose before your first answer; Explore again keeps this setting.";
+      attemptQuestions = createQuestionOrder($("shuffle").checked);
       $("results").hidden = true;
       $("quiz").hidden = false;
       updateProgress(0);
       showQuestion(true);
     });
+    attemptQuestions = createQuestionOrder($("shuffle").checked);
     updateProgress(0);
     showQuestion();
   </script>
