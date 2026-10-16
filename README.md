@@ -3,7 +3,9 @@
 Orbit is a ten-question space exploration quiz with instant answer feedback,
 explanatory facts, progress tracking, and optional shuffled question order.
 Each correct answer earns one point. Finish as a Cadet, Navigator (50% or
-higher), or Commander (80% or higher), then replay to explore again.
+higher), or Commander (80% or higher). From the results, show missed answers to
+review your choices, the correct answers, and their explanations, or replay to
+explore again with a fresh review.
 
 The responsive interface supports light and dark themes, reduced motion, and
 keyboard navigation. Everything lives in `index.html`: HTML, CSS, JavaScript,
