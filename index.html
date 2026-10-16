@@ -135,6 +135,11 @@
     .result-details span { font-size: 10px; color: var(--muted); }
     .result-details > div + div { border-left: 1px solid var(--line); }
     .result .next { justify-content: center; gap: 10px; }
+    .review-toggle { width: 100%; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 9px; background: var(--soft); color: var(--ink); }
+    .missed-answers { padding-left: 24px; text-align: left; overflow-wrap: anywhere; }
+    .missed-answers li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .missed-answers h3 { margin: 0 0 10px; font-size: 16px; line-height: 1.5; }
+    .missed-answers p { margin: 8px 0; font-size: 13px; }
     .arrive { animation: appear .3s ease both; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
     @keyframes pop { 0% { transform: scale(.96); } 60% { transform: scale(1.025); } 100% { transform: scale(1); } }
@@ -207,6 +212,9 @@
         <div class="final-score"><span id="final-score"></span><small> / 10</small></div>
         <p class="result-caption">YOUR FINAL SCORE</p>
         <div class="result-details"><div><strong id="accuracy"></strong><span>ACCURACY</span></div><div><strong id="rank"></strong><span>EXPLORER RANK</span></div></div>
+        <button class="review-toggle" id="review-toggle" aria-expanded="false" aria-controls="missed-answers" hidden>Show missed answers</button>
+        <ol class="missed-answers" id="missed-answers" hidden></ol>
+        <p id="no-missed-answers" hidden>Stellar work — no missed answers to review!</p>
         <button class="next" id="restart"><span aria-hidden="true">↻</span> Explore again</button>
       </section>
     </section>
@@ -231,6 +239,7 @@
     let score = 0;
     let answered = false;
     let attemptQuestions = [...questions];
+    let missedAnswers = [];
 
     function createQuestionOrder(shuffle) {
       const order = [...questions];
@@ -287,6 +296,7 @@
       const item = attemptQuestions[current];
       const correct = selected === item.correct;
       if (correct) score++;
+      else missedAnswers.push({ item, selected });
       const buttons = Array.from($("answers").children);
       buttons.forEach((button, index) => {
         button.disabled = true;
@@ -328,9 +338,39 @@
       $("final-score").textContent = score;
       $("accuracy").textContent = `${Math.round(accuracy)}%`;
       $("rank").textContent = tier.rank;
+      $("missed-answers").replaceChildren();
+      $("missed-answers").hidden = true;
+      $("review-toggle").setAttribute("aria-expanded", "false");
+      $("review-toggle").textContent = "Show missed answers";
+      $("review-toggle").hidden = missedAnswers.length === 0;
+      $("no-missed-answers").hidden = missedAnswers.length !== 0;
+      missedAnswers.forEach(({ item, selected }) => {
+        const entry = document.createElement("li");
+        const heading = document.createElement("h3");
+        heading.textContent = item.question;
+        entry.append(heading);
+        [
+          ["Your answer: ", item.answers[selected]],
+          ["Correct answer: ", item.answers[item.correct]],
+          ["Explanation: ", item.fact]
+        ].forEach(([label, text]) => {
+          const paragraph = document.createElement("p");
+          const labelText = document.createElement("strong");
+          labelText.textContent = label;
+          paragraph.append(labelText, document.createTextNode(text));
+          entry.append(paragraph);
+        });
+        $("missed-answers").append(entry);
+      });
       $("result-title").focus({ preventScroll: true });
     }
 
+    $("review-toggle").addEventListener("click", () => {
+      const expanded = $("review-toggle").getAttribute("aria-expanded") === "true";
+      $("missed-answers").hidden = expanded;
+      $("review-toggle").setAttribute("aria-expanded", String(!expanded));
+      $("review-toggle").textContent = expanded ? "Show missed answers" : "Hide missed answers";
+    });
     $("next").addEventListener("click", () => {
       if (!answered) return;
       if (current === questions.length - 1) showResults();
@@ -343,6 +383,13 @@
     $("restart").addEventListener("click", () => {
       current = 0;
       score = 0;
+      missedAnswers = [];
+      $("missed-answers").replaceChildren();
+      $("missed-answers").hidden = true;
+      $("review-toggle").setAttribute("aria-expanded", "false");
+      $("review-toggle").textContent = "Show missed answers";
+      $("review-toggle").hidden = true;
+      $("no-missed-answers").hidden = true;
       $("shuffle").disabled = false;
       $("shuffle-hint").textContent = "Choose before your first answer; Explore again keeps this setting.";
       attemptQuestions = createQuestionOrder($("shuffle").checked);
